@@ -11,7 +11,7 @@ and a list of `arguments`. It collapses excess whitespace, and allows for quotin
 
 ```toml
 [dependencies]
-comma = "0.1.0"
+comma = "0.1.1"
 ```
 
 ## Usage

@@ -1,11 +1,14 @@
+//! `comma` parses command-line-style strings. See [`Command::from_str`] for syntax details,
+//! and [`Command`] for structure details.
+
 use std::str::FromStr;
 use std::iter::FromIterator;
 use core::fmt;
 use std::fmt::Formatter;
 use std::error;
 
-/// Contains the result of a parsed command. See [from_str] documentation for details on available
-/// command syntax.
+/// Contains the result of a parsed command. See [`Command::from_str`] documentation for details on
+/// available command syntax.
 #[derive(Debug)]
 pub struct Command {
     /// The name of the command being run (i.e. the first argument)
@@ -33,7 +36,7 @@ impl FromStr for Command {
     /// for escaped quotes (`\"`) inside a quoted string.
     ///
     /// `from_str` will only fail if zero tokens are provided (i.e. there is no command name). In
-    /// this case it will provide an [EmptyCommandError].
+    /// this case it will provide an [`EmptyCommandError`].
     fn from_str(s: &str) -> Result<Self, Self::Err> {
 
         // List of all command tokens while splitting the string
@@ -103,7 +106,10 @@ impl FromStr for Command {
             Err(EmptyCommandError)
         } else {
             // Turn the first token into the command name and others into arguments
-            Ok(Command { name: tokens[0].clone(), arguments: Vec::from_iter(tokens[1..].iter().cloned()) })
+            Ok(Command {
+                name: tokens[0].clone(),
+                arguments: Vec::from_iter(tokens[1..].iter().cloned())
+            })
         }
     }
 }
@@ -144,7 +150,9 @@ mod tests {
 
     #[test]
     fn arguments_works() {
-        let result = Command::from_str("hello world \\\"this is\\\" a \"quoted \\\"string\\\"\"").unwrap();
+        let result =
+            Command::from_str("hello world \\\"this is\\\" a \"quoted \\\"string\\\"\"")
+                .unwrap();
         if !result.arguments.len() == 5 {
             panic!("Wrong number of arguments parsed");
         }
