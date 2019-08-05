@@ -7,7 +7,7 @@ description = "Shell-style command parser with support for escaping and quotatio
 license = "MIT"
 repository = "https://github.com/emctague/comma"
 categories = [ "command-line-interface", "parsing", "parser-implementations" ]
-keywords = [ "string", "parse", "parsing", "command", "shell", "line", "split", "syntax" ]
+keywords = [ "string", "parse", "parsing", "command", "shell" ]
 readme = "README.md"
 exclude = ["target", ".idea/*", ".gitignore"]
 

@@ -6,7 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/../comma\examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../comma\tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/../comma\benches" isTestSource="true" />
-      <excludeFolder url="file://$MODULE_DIR$/../comma\target" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
