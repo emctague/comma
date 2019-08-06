@@ -3,13 +3,19 @@
 
 use std::str::FromStr;
 use std::iter::FromIterator;
-use core::fmt;
-use std::fmt::Formatter;
-use std::error;
+use characters::ParserData;
+use syntax_blocks::*;
+
+#[macro_use]
+mod error_types;
+mod syntax_blocks;
+mod characters;
+
+err_type!(pub, EmptyCommandError, "command string has no command name or arguments");
 
 /// Contains the result of a parsed command. See [`Command::from_str`] documentation for details on
 /// available command syntax.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Command {
     /// The name of the command being run (i.e. the first argument)
     pub name: String,
@@ -38,63 +44,16 @@ impl FromStr for Command {
     /// `from_str` will only fail if zero tokens are provided (i.e. there is no command name). In
     /// this case it will provide an [`EmptyCommandError`].
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // We prepend whitespace to force the whitespace syntax block to add in a token.
+        let mut input = String::from(" ");
+        input.push_str(s);
 
-        // List of all command tokens while splitting the string
-        let mut tokens: Vec<String> = Vec::new();
-        // True if the previous character was whitespace - used to collapse whitespace
-        let mut prev_whitespace = true;
-        // True if currently inside of quotes
-        let mut in_quotes = false;
-        // True if previous character was a backslash and this character should be escaped
-        let mut in_backslash = false;
-
-        // The loop assumes the latest item in `tokens` is the current argument, so one must exist
-        tokens.push(String::from(""));
-
-        // Iterate all characters and interpret them
-        for c in s.chars() {
-
-            // If currently in a backslash, add the next character verbatim no matter what
-            if in_backslash {
-                prev_whitespace = false;
-                in_backslash = false;
-                tokens.last_mut().unwrap().push(c);
-
-            // Handle the current character being a backslash
-            } else if c == '\\' {
-                in_backslash = true;
-
-            // If currently quoted, copy verbatim except for end quotes
-            } else if in_quotes {
-                prev_whitespace = false;
-                if c == '\"' {
-                    in_quotes = false;
-                } else {
-                    tokens.last_mut().unwrap().push(c);
-                }
-
-            // If whitespace, add a new empty token unless one has already been added during this
-            // run of whitespace
-            } else if c.is_whitespace() {
-                if !prev_whitespace {
-                    tokens.push(String::from(""));
-                }
-                prev_whitespace = true;
-
-            // For all further conditions we can strike out the whitespace state
-            } else {
-                prev_whitespace = false;
-
-                // Enter quotation mode if a quote is present
-                if c == '\"' {
-                    in_quotes = true;
-
-                // Just copy the character verbatim
-                } else {
-                    tokens.last_mut().unwrap().push(c);
-                }
-            }
+        // Parse all data using syntax blocks
+        let mut data = ParserData::new(&input);
+        while data.not_empty() {
+            handle_or_push(&mut data, &vec![ &EscapeBlock{}, &QuoteBlock{}, &WhitespaceBlock{} ]);
         }
+        let mut tokens = data.get_result().clone();
 
         // Prevents whitespace at the end of the command from creating an empty garbage argument.
         if tokens.last().unwrap().is_empty() {
@@ -111,24 +70,6 @@ impl FromStr for Command {
                 arguments: Vec::from_iter(tokens[1..].iter().cloned())
             })
         }
-    }
-}
-
-
-
-/// This error is given by [Command::from_str] when the command string provided is entirely empty.
-#[derive(Debug, Clone)]
-pub struct EmptyCommandError;
-
-impl fmt::Display for EmptyCommandError {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "command string has no command name or arguments")
-    }
-}
-
-impl error::Error for EmptyCommandError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
     }
 }
 
