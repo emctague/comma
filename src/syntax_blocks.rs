@@ -73,10 +73,11 @@ pub struct QuoteBlock;
 
 impl SyntaxBlock for QuoteBlock {
     fn consume(&self, input: &mut ParserData) -> bool {
-        if input.peek().unwrap() == '"' {
+        let quotation_char = input.peek().unwrap();
+        if quotation_char == '"' || quotation_char == '\'' {
             input.eat().unwrap();
 
-            while input.not_empty() && input.peek().unwrap() != '"' {
+            while input.not_empty() && input.peek().unwrap() != quotation_char {
                 handle_or_push(input, &vec![ &EscapeBlock{} ]);
             }
 
