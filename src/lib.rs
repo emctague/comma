@@ -116,6 +116,15 @@ mod tests {
     }
 
     #[test]
+    fn different_quote_types_nested() {
+        let command = Command::from_str("ls 'a \"b\" c'").expect("parse nested quotes");
+        assert_eq!(command.arguments, &["a \"b\" c"]);
+
+        let command = Command::from_str("ls \"a 'b' c\"").expect("parse nested quotes");
+        assert_eq!(command.arguments, &["a 'b' c"]);
+    }
+
+    #[test]
     #[should_panic]
     fn empty_fails() {
         Command::from_str("    ").unwrap();
