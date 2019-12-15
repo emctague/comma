@@ -15,7 +15,7 @@ err_type!(pub, EmptyCommandError, "command string has no command name or argumen
 
 /// Contains the result of a parsed command. See [`Command::from_str`] documentation for details on
 /// available command syntax.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Command {
     /// The name of the command being run (i.e. the first argument)
     pub name: String,
