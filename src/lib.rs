@@ -106,6 +106,16 @@ mod tests {
     }
 
     #[test]
+    fn quoted_arguments() {
+        let double_quoted =
+            Command::from_str("ls \"dir with spaces\"").expect("parse single quoted");
+        let single_quoted = Command::from_str("ls 'dir with spaces'").expect("parse double quoted");
+        assert_eq!(double_quoted, single_quoted, "Double and single quoted arguments not treated equally");
+        assert_eq!(double_quoted.arguments, &["dir with spaces"]);
+        assert_eq!(single_quoted.arguments, &["dir with spaces"]);
+    }
+
+    #[test]
     #[should_panic]
     fn empty_fails() {
         Command::from_str("    ").unwrap();
