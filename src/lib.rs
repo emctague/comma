@@ -15,7 +15,7 @@ err_type!(pub, EmptyCommandError, "command string has no command name or argumen
 
 /// Contains the result of a parsed command. See [`Command::from_str`] documentation for details on
 /// available command syntax.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Command {
     /// The name of the command being run (i.e. the first argument)
     pub name: String,
@@ -103,6 +103,25 @@ mod tests {
         if !result.arguments[4].eq(&String::from("quoted \"string\"")) {
             panic!("Quoted string not handled correctly");
         }
+    }
+
+    #[test]
+    fn quoted_arguments() {
+        let double_quoted =
+            Command::from_str("ls \"dir with spaces\"").expect("parse single quoted");
+        let single_quoted = Command::from_str("ls 'dir with spaces'").expect("parse double quoted");
+        assert_eq!(double_quoted, single_quoted, "Double and single quoted arguments not treated equally");
+        assert_eq!(double_quoted.arguments, &["dir with spaces"]);
+        assert_eq!(single_quoted.arguments, &["dir with spaces"]);
+    }
+
+    #[test]
+    fn different_quote_types_nested() {
+        let command = Command::from_str("ls 'a \"b\" c'").expect("parse nested quotes");
+        assert_eq!(command.arguments, &["a \"b\" c"]);
+
+        let command = Command::from_str("ls \"a 'b' c\"").expect("parse nested quotes");
+        assert_eq!(command.arguments, &["a 'b' c"]);
     }
 
     #[test]
