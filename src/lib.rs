@@ -1,17 +1,21 @@
 //! `comma` parses command-line-style strings. See [`Command::from_str`] for syntax details,
 //! and [`Command`] for structure details.
 
-use std::str::FromStr;
-use std::iter::FromIterator;
 use characters::ParserData;
+use std::iter::FromIterator;
+use std::str::FromStr;
 use syntax_blocks::*;
 
 #[macro_use]
 mod error_types;
-mod syntax_blocks;
 mod characters;
+mod syntax_blocks;
 
-err_type!(pub, EmptyCommandError, "command string has no command name or arguments");
+err_type!(
+    pub,
+    EmptyCommandError,
+    "command string has no command name or arguments"
+);
 
 /// Contains the result of a parsed command. See [`Command::from_str`] documentation for details on
 /// available command syntax.
@@ -20,7 +24,7 @@ pub struct Command {
     /// The name of the command being run (i.e. the first argument)
     pub name: String,
     /// All arguments being passed
-    pub arguments: Vec<String>
+    pub arguments: Vec<String>,
 }
 
 impl FromStr for Command {
@@ -51,7 +55,10 @@ impl FromStr for Command {
         // Parse all data using syntax blocks
         let mut data = ParserData::new(&input);
         while data.not_empty() {
-            handle_or_push(&mut data, &vec![ &EscapeBlock{}, &QuoteBlock{}, &WhitespaceBlock{} ]);
+            handle_or_push(
+                &mut data,
+                &vec![&EscapeBlock {}, &QuoteBlock {}, &WhitespaceBlock {}],
+            );
         }
         let mut tokens = data.get_result().clone();
 
@@ -67,7 +74,7 @@ impl FromStr for Command {
             // Turn the first token into the command name and others into arguments
             Ok(Command {
                 name: tokens[0].clone(),
-                arguments: Vec::from_iter(tokens[1..].iter().cloned())
+                arguments: Vec::from_iter(tokens[1..].iter().cloned()),
             })
         }
     }
@@ -92,8 +99,7 @@ mod tests {
     #[test]
     fn arguments_works() {
         let result =
-            Command::from_str("hello world \\\"this is\\\" a \"quoted \\\"string\\\"\"")
-                .unwrap();
+            Command::from_str("hello world \\\"this is\\\" a \"quoted \\\"string\\\"\"").unwrap();
         if !result.arguments.len() == 5 {
             panic!("Wrong number of arguments parsed");
         }
@@ -110,7 +116,10 @@ mod tests {
         let double_quoted =
             Command::from_str("ls \"dir with spaces\"").expect("parse single quoted");
         let single_quoted = Command::from_str("ls 'dir with spaces'").expect("parse double quoted");
-        assert_eq!(double_quoted, single_quoted, "Double and single quoted arguments not treated equally");
+        assert_eq!(
+            double_quoted, single_quoted,
+            "Double and single quoted arguments not treated equally"
+        );
         assert_eq!(double_quoted.arguments, &["dir with spaces"]);
         assert_eq!(single_quoted.arguments, &["dir with spaces"]);
     }
@@ -128,5 +137,17 @@ mod tests {
     #[should_panic]
     fn empty_fails() {
         Command::from_str("    ").unwrap();
+    }
+
+    #[test]
+    fn unicode() {
+        let result = Command::from_str("ß 𱁬").unwrap();
+        assert_eq!(
+            result,
+            Command {
+                name: "ß".into(),
+                arguments: vec!["𱁬".into()]
+            }
+        );
     }
 }
