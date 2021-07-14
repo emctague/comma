@@ -3,19 +3,27 @@ use std::clone::Clone;
 pub struct ParserData {
     input: String,
     output: Vec<String>,
-    offset: usize
+    byte_offset: usize,
 }
 
-err_type!(pub, OutOfInputError, "No input remains despite requiring input");
+err_type!(
+    pub,
+    OutOfInputError,
+    "No input remains despite requiring input"
+);
 
 impl ParserData {
     pub fn new(input: &String) -> ParserData {
-        ParserData { input: input.clone(), output: Vec::new(), offset: 0 }
+        ParserData {
+            input: input.clone(),
+            output: Vec::new(),
+            byte_offset: 0,
+        }
     }
 
     pub fn eat(&mut self) -> Result<char, OutOfInputError> {
         let result = self.peek()?;
-        self.offset += 1;
+        self.byte_offset += result.len_utf8();
         Ok(result)
     }
 
@@ -26,11 +34,14 @@ impl ParserData {
     }
 
     pub fn peek(&self) -> Result<char, OutOfInputError> {
-        self.input.chars().nth(self.offset).ok_or(OutOfInputError)
+        self.input[self.byte_offset..]
+            .chars()
+            .next()
+            .ok_or(OutOfInputError)
     }
 
     pub fn not_empty(&self) -> bool {
-        self.offset < self.input.len()
+        self.byte_offset < self.input.len()
     }
 
     pub fn new_token(&mut self) {
