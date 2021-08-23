@@ -4,24 +4,23 @@
 [![docs.rs](https://docs.rs/comma/badge.svg)](https://docs.rs/comma)
 [![Build Status](https://travis-ci.org/emctague/comma.svg?branch=master)](https://travis-ci.org/emctague/comma)
 
-`comma` parses shell-style commands, e.g. `sendmsg joe "I say \"hi\" to you!"`, into a simple structure with a `name`
-and a list of `arguments`. It collapses excess whitespace, and allows for quoting or backslash-escaping text.
+`comma` splits shell-style commands, e.g. `sendmsg joe "I say \"hi\" to you!"`, into a list of individual tokens.
+It correctly handles unicode characters, escape sequences, and single- or double-quoted strings.
 
 ## Cargo
 
 ```toml
 [dependencies]
-comma = "0.1.2"
+comma = "1.0.0"
 ```
 
 ## Usage
 
 ```rust
-use comma::Command;
+use comma::parse_command;
 
 fn main () {
-    let parsed = Command::from_str("sendmsg joe \"I say \\"hi\\" to you!\"");
-    println!("Command name: {}", parsed.name); // Command name: sendmsg
-    println!("Command arguments: {:#?}", parsed.arguments); // Command arguments: [ "joe", "I say \"hi\" to you!" ]
+    let parsed = parse_command("sendmsg joe \"I say \\\"hi\\\" to you!\" 'but only\\ntoday'").unwrap();
+    println!("Result: {:#?}", parsed); // Result: [ "sendmsg", "joe", "I say \"hi\" to you!", "but only\ntoday" ]
 }
 ```

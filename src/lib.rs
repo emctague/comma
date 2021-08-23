@@ -1,153 +1,90 @@
-//! `comma` parses command-line-style strings. See [`Command::from_str`] for syntax details,
-//! and [`Command`] for structure details.
+//! `comma` parses command-line-style strings. See [`parse_command`] for details.
 
-use characters::ParserData;
-use std::iter::FromIterator;
-use std::str::FromStr;
-use syntax_blocks::*;
+use std::iter::{Peekable};
+use std::str::{Chars};
 
-#[macro_use]
-mod error_types;
-mod characters;
-mod syntax_blocks;
-
-err_type!(
-    pub,
-    EmptyCommandError,
-    "command string has no command name or arguments"
-);
-
-/// Contains the result of a parsed command. See [`Command::from_str`] documentation for details on
-/// available command syntax.
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Command {
-    /// The name of the command being run (i.e. the first argument)
-    pub name: String,
-    /// All arguments being passed
-    pub arguments: Vec<String>,
+fn parse_escape(chars: &mut Peekable<Chars>) -> Option<char> {
+    return Some(match chars.next()? {
+        'n' => '\n',
+        'r' => '\r',
+        't' => '\t',
+        literal => literal
+    })
 }
 
-impl FromStr for Command {
-    type Err = EmptyCommandError;
+fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
+    let mut output = String::new();
 
-    /// Parse a command from the commandline. Commands consist of separate 'tokens' separated by
-    /// whitespace.
-    ///
-    /// Multiple whitespace characters are permitted between tokens, including at the beginning and
-    /// end of the command string. All extra whitespace is stripped unless explicitly escaped using
-    /// quotation marks or backslash escaping.
-    ///
-    /// Preceding a character with a backslash (`\`) will cause any special meaning for the
-    /// character to be ignored. To convey a *real* backslash in a command it must be prefixed with
-    /// another backslash, such as: (`\\`).
-    ///
-    /// Quotation marks surrounding a portion of text will also cause the text to be included
-    /// verbatim, including whitespace. However, backslashes retain their special meaning, to allow
-    /// for escaped quotes (`\"`) inside a quoted string.
-    ///
-    /// `from_str` will only fail if zero tokens are provided (i.e. there is no command name). In
-    /// this case it will provide an [`EmptyCommandError`].
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // We prepend whitespace to force the whitespace syntax block to add in a token.
-        let mut input = String::from(" ");
-        input.push_str(s);
-
-        // Parse all data using syntax blocks
-        let mut data = ParserData::new(&input);
-        while data.not_empty() {
-            handle_or_push(
-                &mut data,
-                &vec![&EscapeBlock {}, &QuoteBlock {}, &WhitespaceBlock {}],
-            );
-        }
-        let mut tokens = data.get_result().clone();
-
-        // Prevents whitespace at the end of the command from creating an empty garbage argument.
-        if tokens.last().unwrap().is_empty() {
-            tokens.pop();
-        }
-
-        if tokens.is_empty() {
-            // Fail if no command was provided
-            Err(EmptyCommandError)
+    while let Some(ch) = chars.next() {
+        if ch == delim {
+            return Some(output)
+        } else if ch == '\\' {
+            output.push(parse_escape(chars)?);
         } else {
-            // Turn the first token into the command name and others into arguments
-            Ok(Command {
-                name: tokens[0].clone(),
-                arguments: Vec::from_iter(tokens[1..].iter().cloned()),
-            })
+            output.push(ch);
         }
     }
+
+    return None
 }
+
+/// Parses a command into a list of individual tokens.
+/// Each token is separated by one or more characters of whitespace.
+/// Pairs of single- or double-quotes can be used to ignore whitespace. Within pairs of quotation
+/// marks, a backslash (\) can be used to escape any character. The special escape sequences
+/// '\n', '\r', and '\t' are also handled as Newlines, Carriage Returns, and Tabs, respectively.
+/// Should a quotation mark be mismatched (no counterpart terminating mark exists), this function
+/// will return None. Otherwise, it returns a list of tokens in the input string.
+pub fn parse_command(input: &str) -> Option<Vec<String>> {
+    let mut next_push = true;
+    let mut chars = input.chars().peekable();
+    let mut output : Vec<String> = Vec::new();
+
+    while let Some(ch) = chars.next() {
+        if ch.is_whitespace() {
+            next_push = true;
+        } else{
+            if next_push { output.push(String::new()); next_push = false; }
+
+            if ch == '\\' {
+                output.last_mut()?.push(parse_escape(&mut chars)?);
+            } else if ch == '"' || ch == '\'' {
+                output.last_mut()?.push_str(parse_string(&mut chars, ch)?.as_str());
+            } else {
+                output.last_mut()?.push(ch);
+            }
+        }
+    }
+
+    return Some(output)
+}
+
 
 #[cfg(test)]
 mod tests {
-    use crate::Command;
-    use std::str::FromStr;
+    use crate::{parse_command};
 
     #[test]
-    fn no_arguments_works() {
-        let result = Command::from_str("hello").unwrap();
-        if !result.name.eq(&String::from("hello")) {
-            panic!("Argument-free command doesn't handle command name correctly");
-        }
-        if !result.arguments.is_empty() {
-            panic!("Argument-free command doesn't have empty argument list");
-        }
+    fn parsing_works() {
+        let result = parse_command("hello world \\'this is\\' a \"quoted \\\"string\\\"\"").unwrap();
+        assert_eq!(result,
+                   vec![String::from("hello"), String::from("world"),
+                        String::from("'this"), String::from("is'"), String::from("a"),
+                        String::from("quoted \"string\"")]);
     }
 
     #[test]
-    fn arguments_works() {
-        let result =
-            Command::from_str("hello world \\\"this is\\\" a \"quoted \\\"string\\\"\"").unwrap();
-        if !result.arguments.len() == 5 {
-            panic!("Wrong number of arguments parsed");
-        }
-        if !result.arguments[1].eq(&String::from("\"this")) {
-            panic!("Escaped quotes not handled correctly");
-        }
-        if !result.arguments[4].eq(&String::from("quoted \"string\"")) {
-            panic!("Quoted string not handled correctly");
-        }
-    }
-
-    #[test]
-    fn quoted_arguments() {
-        let double_quoted =
-            Command::from_str("ls \"dir with spaces\"").expect("parse single quoted");
-        let single_quoted = Command::from_str("ls 'dir with spaces'").expect("parse double quoted");
-        assert_eq!(
-            double_quoted, single_quoted,
-            "Double and single quoted arguments not treated equally"
-        );
-        assert_eq!(double_quoted.arguments, &["dir with spaces"]);
-        assert_eq!(single_quoted.arguments, &["dir with spaces"]);
-    }
-
-    #[test]
-    fn different_quote_types_nested() {
-        let command = Command::from_str("ls 'a \"b\" c'").expect("parse nested quotes");
-        assert_eq!(command.arguments, &["a \"b\" c"]);
-
-        let command = Command::from_str("ls \"a 'b' c\"").expect("parse nested quotes");
-        assert_eq!(command.arguments, &["a 'b' c"]);
-    }
-
-    #[test]
-    #[should_panic]
-    fn empty_fails() {
-        Command::from_str("    ").unwrap();
+    fn fail_mismatch() {
+        assert_eq!(parse_command("Hello 'world "), None);
     }
 
     #[test]
     fn unicode() {
-        let result = Command::from_str("ß 𱁬").unwrap();
+        // This contains a CJK IDEOGRAPH EXTENSION G character, which is invisible.
+        let result = parse_command("ß 𱁬").unwrap();
         assert_eq!(
             result,
-            Command {
-                name: "ß".into(),
-                arguments: vec!["𱁬".into()]
-            }
+            vec![String::from("ß"), String::from("𱁬")]
         );
     }
 }

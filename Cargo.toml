@@ -1,6 +1,6 @@
 [package]
 name = "comma"
-version = "0.1.2"
+version = "1.0.0"
 authors = ["Ethan McTague <ethan@tague.me>"]
 edition = "2018"
 description = "Shell-style command parser with support for escaping and quotations."
