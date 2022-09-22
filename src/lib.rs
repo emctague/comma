@@ -1,15 +1,15 @@
 //! `comma` parses command-line-style strings. See [`parse_command`] for details.
 
-use std::iter::{Peekable};
-use std::str::{Chars};
+use std::iter::Peekable;
+use std::str::Chars;
 
 fn parse_escape(chars: &mut Peekable<Chars>) -> Option<char> {
     return Some(match chars.next()? {
         'n' => '\n',
         'r' => '\r',
         't' => '\t',
-        literal => literal
-    })
+        literal => literal,
+    });
 }
 
 fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
@@ -17,7 +17,7 @@ fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
 
     while let Some(ch) = chars.next() {
         if ch == delim {
-            return Some(output)
+            return Some(output);
         } else if ch == '\\' {
             output.push(parse_escape(chars)?);
         } else {
@@ -25,7 +25,7 @@ fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
         }
     }
 
-    return None
+    return None;
 }
 
 /// Parses a command into a list of individual tokens.
@@ -38,39 +38,51 @@ fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
 pub fn parse_command(input: &str) -> Option<Vec<String>> {
     let mut next_push = true;
     let mut chars = input.chars().peekable();
-    let mut output : Vec<String> = Vec::new();
+    let mut output: Vec<String> = Vec::new();
 
     while let Some(ch) = chars.next() {
         if ch.is_whitespace() {
             next_push = true;
-        } else{
-            if next_push { output.push(String::new()); next_push = false; }
+        } else {
+            if next_push {
+                output.push(String::new());
+                next_push = false;
+            }
 
             if ch == '\\' {
                 output.last_mut()?.push(parse_escape(&mut chars)?);
             } else if ch == '"' || ch == '\'' {
-                output.last_mut()?.push_str(parse_string(&mut chars, ch)?.as_str());
+                output
+                    .last_mut()?
+                    .push_str(parse_string(&mut chars, ch)?.as_str());
             } else {
                 output.last_mut()?.push(ch);
             }
         }
     }
 
-    return Some(output)
+    return Some(output);
 }
-
 
 #[cfg(test)]
 mod tests {
-    use crate::{parse_command};
+    use crate::parse_command;
 
     #[test]
     fn parsing_works() {
-        let result = parse_command("hello world \\'this is\\' a \"quoted \\\"string\\\"\"").unwrap();
-        assert_eq!(result,
-                   vec![String::from("hello"), String::from("world"),
-                        String::from("'this"), String::from("is'"), String::from("a"),
-                        String::from("quoted \"string\"")]);
+        let result =
+            parse_command("hello world \\'this is\\' a \"quoted \\\"string\\\"\"").unwrap();
+        assert_eq!(
+            result,
+            vec![
+                String::from("hello"),
+                String::from("world"),
+                String::from("'this"),
+                String::from("is'"),
+                String::from("a"),
+                String::from("quoted \"string\"")
+            ]
+        );
     }
 
     #[test]
@@ -82,9 +94,6 @@ mod tests {
     fn unicode() {
         // This contains a CJK IDEOGRAPH EXTENSION G character, which is invisible.
         let result = parse_command("ß 𱁬").unwrap();
-        assert_eq!(
-            result,
-            vec![String::from("ß"), String::from("𱁬")]
-        );
+        assert_eq!(result, vec![String::from("ß"), String::from("𱁬")]);
     }
 }
