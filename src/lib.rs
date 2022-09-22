@@ -4,12 +4,12 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 fn parse_escape(chars: &mut Peekable<Chars>) -> Option<char> {
-    return Some(match chars.next()? {
+    Some(match chars.next()? {
         'n' => '\n',
         'r' => '\r',
         't' => '\t',
         literal => literal,
-    });
+    })
 }
 
 fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
@@ -25,7 +25,7 @@ fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
         }
     }
 
-    return None;
+    None
 }
 
 /// Parses a command into a list of individual tokens.
@@ -61,7 +61,7 @@ pub fn parse_command(input: &str) -> Option<Vec<String>> {
         }
     }
 
-    return Some(output);
+    Some(output)
 }
 
 #[cfg(test)]
