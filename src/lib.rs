@@ -3,12 +3,15 @@
 use std::iter::Peekable;
 use std::str::Chars;
 
-fn parse_escape(chars: &mut Peekable<Chars>) -> Option<char> {
-    Some(match chars.next()? {
-        'n' => '\n',
-        'r' => '\r',
-        't' => '\t',
-        literal => literal,
+fn parse_escape(ch: char, chars: &mut Peekable<Chars>) -> Option<char> {
+    Some(match ch {
+        '\\' => match chars.next()? {
+            'n' => '\n',
+            'r' => '\r',
+            't' => '\t',
+            literal => literal,
+        },
+        x => x
     })
 }
 
@@ -16,13 +19,8 @@ fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
     let mut output = String::new();
 
     while let Some(ch) = chars.next() {
-        if ch == delim {
-            return Some(output);
-        } else if ch == '\\' {
-            output.push(parse_escape(chars)?);
-        } else {
-            output.push(ch);
-        }
+        if ch == delim { return Some(output) }
+        output.push(parse_escape(ch, chars)?);
     }
 
     None
@@ -43,21 +41,20 @@ pub fn parse_command(input: &str) -> Option<Vec<String>> {
     while let Some(ch) = chars.next() {
         if ch.is_whitespace() {
             next_push = true;
-        } else {
-            if next_push {
-                output.push(String::new());
-                next_push = false;
-            }
+            continue;
+        }
 
-            if ch == '\\' {
-                output.last_mut()?.push(parse_escape(&mut chars)?);
-            } else if ch == '"' || ch == '\'' {
+        if next_push {
+            output.push(String::new());
+            next_push = false;
+        }
+
+        match ch {
+            '"' | '\'' =>
                 output
-                    .last_mut()?
-                    .push_str(parse_string(&mut chars, ch)?.as_str());
-            } else {
-                output.last_mut()?.push(ch);
-            }
+                .last_mut()?
+                .push_str(parse_string(&mut chars, ch)?.as_str()),
+            ch => output.last_mut()?.push(parse_escape(ch, &mut chars)?)
         }
     }
 
@@ -71,7 +68,7 @@ mod tests {
     #[test]
     fn parsing_works() {
         let result =
-            parse_command("hello world \\'this is\\' a \"quoted \\\"string\\\"\"").unwrap();
+            parse_command("   hello    world \\'this is\\' a \"quoted \\\"string\\\"\"    ").unwrap();
         assert_eq!(
             result,
             vec![
