@@ -34,27 +34,24 @@ fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
 /// Should a quotation mark be mismatched (no counterpart terminating mark exists), this function
 /// will return None. Otherwise, it returns a list of tokens in the input string.
 pub fn parse_command(input: &str) -> Option<Vec<String>> {
-    let mut next_push = true;
-    let mut chars = input.chars().peekable();
-    let mut output: Vec<String> = Vec::new();
+    let mut chars = input.trim_start().chars().peekable();
+    let mut output: Vec<String> = vec![String::new()];
 
     while let Some(ch) = chars.next() {
-        if ch.is_whitespace() {
-            next_push = true;
-            continue;
-        }
-
-        if next_push {
-            output.push(String::new());
-            next_push = false;
-        }
-
         match ch {
+            ch if ch.is_whitespace() =>
+                // Sequences of whitespace are collapsed and used to make a new vec element.
+                if !chars.peek().map_or(true, |c| c.is_whitespace()) {
+                    output.push(String::new());
+                }
+
             '"' | '\'' =>
                 output
                 .last_mut()?
                 .push_str(parse_string(&mut chars, ch)?.as_str()),
-            ch => output.last_mut()?.push(parse_escape(ch, &mut chars)?)
+
+            ch =>
+                output.last_mut()?.push(parse_escape(ch, &mut chars)?)
         }
     }
 
