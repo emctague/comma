@@ -11,7 +11,7 @@ fn parse_escape(ch: char, chars: &mut Peekable<Chars>) -> Option<char> {
             't' => '\t',
             literal => literal,
         },
-        x => x
+        x => x,
     })
 }
 
@@ -19,7 +19,9 @@ fn parse_string(chars: &mut Peekable<Chars>, delim: char) -> Option<String> {
     let mut output = String::new();
 
     while let Some(ch) = chars.next() {
-        if ch == delim { return Some(output) }
+        if ch == delim {
+            return Some(output);
+        }
         output.push(parse_escape(ch, chars)?);
     }
 
@@ -40,18 +42,18 @@ pub fn parse_command(input: &str) -> Option<Vec<String>> {
     while let Some(ch) = chars.next() {
         match ch {
             ch if ch.is_whitespace() =>
-                // Sequences of whitespace are collapsed and used to make a new vec element.
+            // Sequences of whitespace are collapsed and used to make a new vec element.
+            {
                 if !chars.peek().map_or(true, |c| c.is_whitespace()) {
                     output.push(String::new());
                 }
+            }
 
-            '"' | '\'' =>
-                output
+            '"' | '\'' => output
                 .last_mut()?
                 .push_str(parse_string(&mut chars, ch)?.as_str()),
 
-            ch =>
-                output.last_mut()?.push(parse_escape(ch, &mut chars)?)
+            ch => output.last_mut()?.push(parse_escape(ch, &mut chars)?),
         }
     }
 
@@ -65,7 +67,8 @@ mod tests {
     #[test]
     fn parsing_works() {
         let result =
-            parse_command("   hello    world \\'this is\\' a \"quoted \\\"string\\\"\"    ").unwrap();
+            parse_command("   hello    world \\'this is\\' a \"quoted \\\"string\\\"\"    ")
+                .unwrap();
         assert_eq!(
             result,
             vec![
